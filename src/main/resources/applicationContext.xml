@@ -1,0 +1,86 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-4.2.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx-4.2.xsd">
+
+    <!-- 配置组件扫描器，使用注解方式开发,不用配置dao和service -->
+    <!-- 在springmvc.xml文件中也可以配置这个属性 -->
+    <context:component-scan base-package="com.zxl"/>
+
+    <!--production环境-->
+    <beans profile="production" default-lazy-init="true">
+        <context:annotation-config/>
+        <context:property-placeholder location="classpath:application.properties"/>
+
+        <!-- 数据源 -->
+        <bean id="dataSource" destroy-method="close"
+              class="com.alibaba.druid.pool.DruidDataSource">
+            <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+            <property name="url" value="jdbc:mysql://localhost:3306/test" />
+            <property name="username" value="root" />
+            <property name="password" value="" />
+        </bean>
+
+        <!-- 配置session工厂 -->
+        <bean id="sessionFactory" 
+              class="org.springframework.orm.hibernate5.LocalSessionFactoryBean"
+                p:dataSource-ref="dataSource">
+            <property name="packagesToScan" value="com"/>
+            <property name="hibernateProperties">
+                <props>
+                    <prop key="javax.persistence.validation.mode">none</prop>
+                    <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+                    <prop key="hibernate.show_sql">false</prop>
+                    <prop key="hibernate.format_sql">false</prop>
+                    <prop key="hibernate.hbm2ddl.auto">update</prop>
+                </props>
+            </property>
+        </bean>
+
+        <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+            <property name="dataSource" ref="dataSource"/>
+        </bean>
+
+        <!-- 事务管理器 -->
+        <bean id="transactionManager"
+              class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+            <property name="sessionFactory" ref="sessionFactory"/>
+        </bean>
+        <!--基于注解的事务管理-->
+        <tx:annotation-driven transaction-manager="transactionManager"/>
+    </beans>
+
+    <beans>
+        <bean class="org.springframework.jdbc.datasource.init.DataSourceInitializer"
+              depends-on="sessionFactory">
+            <property name="databasePopulator" ref="resourceDatabasePopulator"/>
+            <property name="dataSource" ref="dataSource"/>
+        </bean>
+        <bean id="resourceDatabasePopulator"
+              class="org.springframework.jdbc.datasource.init.ResourceDatabasePopulator">
+            <property name="scripts">
+                <array>
+                    <value>classpath:db/data.sql</value>
+                </array>
+            </property>
+            <property name="sqlScriptEncoding">
+                <value>UTF-8</value>
+            </property>
+            <property name="continueOnError">
+                <value>true</value>
+            </property>
+            <property name="ignoreFailedDrops">
+                <value>true</value>
+            </property>
+        </bean>
+    </beans>
+
+
+
+</beans>
